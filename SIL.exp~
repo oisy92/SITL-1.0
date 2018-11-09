@@ -1,0 +1,87 @@
+#!/usr/bin/expect -f
+package require Expect
+for {set i 1} {$i <= 100} {incr i} {
+set timeout -1
+spawn bash
+set bash $spawn_id
+spawn sim_vehicle.py
+set sim $spawn_id
+set ::original [clock seconds]
+proc updatethetime {} {
+set now [clock seconds]
+set Timer [expr {$now-$::original}]
+after 500 updatethetime
+if {$Timer > 900} {
+send -- "Timer Finished - Reseting\r"
+}
+}
+updatethetime
+proc batterydetect {} {
+send -- "bat\r"
+after 500 batterydetect
+}
+batterydetect
+expect {
+"DISARMED" {
+#send -- "param set SYSID_SW_MREV 0\r"
+send -- "param set SIM_SPEEDUP 3\r"
+file copy -force /home/quas/ardupilot/ArduCopter/mav.tlog /home/quas/Logs
+sleep 1
+file rename -force -- /home/quas/Logs/mav.tlog /home/quas/Logs/Log_$i.tlog
+exp_close
+}
+-re "Timer Finished - Reseting" {
+sleep 5
+#send -- "param set SYSID_SW_MREV 0\r"
+send -- "param set SIM_SPEEDUP 3\r"
+sleep 5
+file copy -force /home/quas/ardupilot/ArduCopter/mav.tlog /home/quas/Logs
+sleep 1
+file rename -force -- /home/quas/Logs/mav.tlog /home/quas/Logs/TIMERUP_Log_$i.tlog
+exp_close
+}
+"Flight battery:   0%" {
+
+#send -- "param set SYSID_SW_MREV 0\r"
+send -- "param set SIM_SPEEDUP 3\r"
+file copy -force /home/quas/ardupilot/ArduCopter/mav.tlog /home/quas/Logs
+sleep 1
+file rename -force -- /home/quas/Logs/mav.tlog /home/quas/Logs/BATTERY_Log_$i.tlog
+exp_close
+}
+"APM: EKF2 IMU1 is using GPS" {
+send -- "param set FENCE_RADIUS 500\r"
+send -- "param set FENCE_ALT_MAX 120\r"
+send -- "param set FENCE_ENABLE 0\r"
+send -- "param set SIM_SPEEDUP 3\r"
+send -- "mode guided\r"
+exp_continue
+}
+"GUIDED> Mode GUIDED" {
+send -- "set param\r"
+send -- "arm throttle\r"
+exp_continue
+}
+"ARMED" {
+send -- "takeoff 10\r"
+exp_continue
+}
+"height 10" {
+send -- "wp load FP.waypoints\r"
+exp_continue
+}
+"APM: Flight plan received" {
+send -- "mode auto\r"
+exp_continue
+}
+"APM: Reached command #2" {
+send -- "mode land\r"
+exp_continue
+}
+"waypoint 2" {
+send -- "param set\r"
+exp_continue
+}
+}
+}
+interact
