@@ -1,4 +1,4 @@
-# Autopilot Failure Mode Analysis using Simulation in the Loop
+# [ARCHIVED] Autopilot Failure Mode Analysis using Simulation in the Loop
 
 This is a modified implementation of Ardupilot ArduCopter to create an autonomous UAV flight simulator for autopilot studies and analysis.
 
